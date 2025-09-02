@@ -1,13 +1,12 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
 client_id = "5c8e327de4ab0d0dbe9a343f599c017e"
-name = "Sill AI Agent"
-application_url = "https://example.com"
+name = "Sill Virtual Plant Assistant"
+application_url = "https://sill-virtual-plant-assistant.onrender.com"
 embedded = true
 
 [build]
 automatically_update_urls_on_dev = true
-include_config_on_deploy = true
 
 [webhooks]
 api_version = "2025-10"
