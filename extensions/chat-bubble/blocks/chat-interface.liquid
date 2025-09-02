@@ -10,7 +10,7 @@
 
   <div class="shop-ai-chat-window">
     <div class="shop-ai-chat-header">
-      <div>{{ 'chat.title' | t }}</div>
+      <div>The Sill's Virtual Plant Specialist</div>
       <button class="shop-ai-chat-close">✕</button>
     </div>
 
@@ -27,6 +27,12 @@
         </svg>
       </button>
     </div>
+    <div class="shop-ai-open-gorgias">
+      <span>or </span>
+      <a class="shop-ai-gorgias-link">
+        talk to our support staff
+      </a>
+    </div>
   </div>
 </div>
 
@@ -37,6 +43,20 @@
     welcomeMessage: {{ block.settings.welcome_message | json }}
   };
   window.shopId = {{ shop.id }};
+
+  document.addEventListener("DOMContentLoaded", function () {
+    const button = document.querySelector(".shop-ai-gorgias-link");
+    if (button) {
+      button.addEventListener("click", function () {
+        if (window.GorgiasChat && typeof window.GorgiasChat.open === "function") {
+          window.GorgiasChat.open();
+        } else {
+          console.warn("Gorgias Chat is not loaded yet.");
+        }
+      });
+    }
+  });
+
 </script>
 
 {% schema %}

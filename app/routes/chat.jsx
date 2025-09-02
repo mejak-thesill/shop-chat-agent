@@ -186,14 +186,15 @@ async function handleChatSession({
     // Execute the conversation stream
     let finalMessage = { role: 'user', content: userMessage };
 
-    while (finalMessage.stop_reason !== "end_turn") {
-      finalMessage = await claudeService.streamConversation(
-        {
-          messages: conversationHistory,
-          promptType,
-          tools: mcpClient.tools
-        },
-        {
+       while (finalMessage.stop_reason !== "end_turn") {
+  
+          finalMessage = await claudeService.streamConversation(
+          {
+            messages: conversationHistory,
+            promptType,
+            tools: [...mcpClient.tools, handoffTool]
+          },
+          {
           // Handle text chunks
           onText: (textDelta) => {
             stream.sendMessage({
