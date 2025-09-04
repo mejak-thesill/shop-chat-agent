@@ -1,80 +1,77 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
+// prisma/schema.prisma
 
-generator client {
-  provider = "prisma-client-js"
-}
-
-// Note that some adapters may set a maximum length for the String type by default, please ensure your strings are long
-// enough when changing adapters.
-// See https://www.prisma.io/docs/orm/reference/prisma-schema-reference#string for more information
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
+generator client {
+  provider = "prisma-client-js"
+}
+
 model Session {
-  id            String    @id
-  shop          String
-  state         String
+  id            String    @id @db.Text
+  shop          String    @db.Text
+  state         String    @db.Text
   isOnline      Boolean   @default(false)
-  scope         String?
+  scope         String?   @db.Text
   expires       DateTime?
-  accessToken   String
+  accessToken   String?   @db.Text
   userId        BigInt?
-  firstName     String?
-  lastName      String?
-  email         String?
+  firstName     String?   @db.Text
+  lastName      String?   @db.Text
+  email         String?   @db.Text
   accountOwner  Boolean   @default(false)
-  locale        String?
+  locale        String?   @db.Text
   collaborator  Boolean?  @default(false)
   emailVerified Boolean?  @default(false)
 }
 
 model CustomerToken {
-  id              String    @id
-  conversationId  String
-  accessToken     String
-  refreshToken    String?
-  expiresAt       DateTime
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  id             String   @id @db.Text
+  conversationId String   @db.Text
+  accessToken    String   @db.Text
+  refreshToken   String?  @db.Text
+  expiresAt      DateTime
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @default(now())
 
-  @@index([conversationId])
+  @@index([conversationId], name: "idx_customerToken_conversationId")
 }
 
 model CodeVerifier {
-  id              String    @id
-  state           String    @unique
-  verifier        String
-  createdAt       DateTime  @default(now())
-  expiresAt       DateTime
+  id        String   @id @db.Text
+  state     String   @unique @db.Text
+  verifier  String   @db.Text
+  createdAt DateTime @default(now())
+  expiresAt DateTime
 
-  @@index([state])
+  @@index([state], name: "idx_codeVerifier_state")
 }
 
 model Conversation {
-  id        String    @id
-  messages  Message[]
+  id        String    @id @db.Text
   createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  updatedAt DateTime  @default(now())
+  Message   Message[]
 }
 
 model Message {
-  id             String       @id @default(cuid())
-  conversationId String
-  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  role           String       // "user" or "assistant"
+  id             String   @id @db.Text
+  conversationId String   @db.Text
+  role           String   @db.Text
   content        String
-  createdAt      DateTime     @default(now())
+  createdAt      DateTime @default(now())
 
-  @@index([conversationId])
+  Conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([conversationId], name: "idx_message_conversationId")
 }
 
 model CustomerAccountUrl {
-  id             String    @id @default(cuid())
-  conversationId String    @unique
+  id             String   @id @db.Text
+  conversationId String   @unique @db.Text
   url            String
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @default(now())
 }
