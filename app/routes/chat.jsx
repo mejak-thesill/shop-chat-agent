@@ -4,39 +4,36 @@
  */
 import { json } from "@remix-run/node";
 import MCPClient from "../mcp-client";
-import { saveMessage, getConversationHistory, storeCustomerAccountUrl, getCustomerAccountUrl } from "../db.server";
+import {
+  saveMessage,
+  getConversationHistory,
+  storeCustomerAccountUrl,
+  getCustomerAccountUrl
+} from "../db.server";
 import AppConfig from "../services/config.server";
 import { createSseStream } from "../services/streaming.server";
 import { createClaudeService } from "../services/claude.server";
 import { createToolService } from "../services/tool.server";
 import { unauthenticated } from "../shopify.server";
 
-
 /**
- * Remix loader function for handling GET requests
+ * Remix loader for GET requests
  */
 export async function loader({ request }) {
-  // Handle OPTIONS requests (CORS preflight)
   if (request.method === "OPTIONS") {
-    return new Response(null, {
-      status: 204,
-      headers: getCorsHeaders(request)
-    });
+    return new Response(null, { status: 204, headers: getCorsHeaders(request) });
   }
 
   const url = new URL(request.url);
 
-  // Handle history fetch requests - matches /chat?history=true&conversation_id=XYZ
   if (url.searchParams.has('history') && url.searchParams.has('conversation_id')) {
-    return handleHistoryRequest(request, url.searchParams.get('conversation_id'));
+    return handleHistoryRequest(url.searchParams.get('conversation_id'));
   }
 
-  // Handle SSE requests
   if (!url.searchParams.has('history') && request.headers.get("Accept") === "text/event-stream") {
     return handleChatRequest(request);
   }
 
-  // API-only: reject all other requests
   return json(
     { error: AppConfig.errorMessages.apiUnsupported },
     { status: 400, headers: getCorsHeaders(request) }
@@ -44,39 +41,28 @@ export async function loader({ request }) {
 }
 
 /**
- * Remix action function for handling POST requests
+ * Remix action for POST requests
  */
 export async function action({ request }) {
   return handleChatRequest(request);
 }
 
 /**
- * Handle history fetch requests
- * @param {Request} request - The request object
- * @param {string} conversationId - The conversation ID
- * @returns {Response} JSON response with chat history
+ * Return conversation history
  */
-async function handleHistoryRequest(request, conversationId) {
+async function handleHistoryRequest(conversationId) {
   const messages = await getConversationHistory(conversationId);
-
-  return json(
-    { messages },
-    { headers: getCorsHeaders(request) }
-  );
+  return json({ messages });
 }
 
 /**
- * Handle chat requests (both GET and POST)
- * @param {Request} request - The request object
- * @returns {Response} Server-sent events stream
+ * Main chat handler (SSE)
  */
 async function handleChatRequest(request) {
   try {
-    // Get message data from request body
     const body = await request.json();
     const userMessage = body.message;
 
-    // Validate required message
     if (!userMessage) {
       return new Response(
         JSON.stringify({ error: AppConfig.errorMessages.missingMessage }),
@@ -84,182 +70,89 @@ async function handleChatRequest(request) {
       );
     }
 
-    // Generate or use existing conversation ID
     const conversationId = body.conversation_id || Date.now().toString();
     const promptType = body.prompt_type || AppConfig.api.defaultPromptType;
 
-    // Create a stream for the response
     const responseStream = createSseStream(async (stream) => {
-      await handleChatSession({
-        request,
-        userMessage,
-        conversationId,
-        promptType,
-        stream
-      });
+      await handleChatSession({ request, userMessage, conversationId, promptType, stream });
     });
 
-    return new Response(responseStream, {
-      headers: getSseHeaders(request)
-    });
+    return new Response(responseStream, { headers: getSseHeaders(request) });
   } catch (error) {
     console.error('Error in chat request handler:', error);
-    return json({ error: error.message }, {
-      status: 500,
-      headers: getCorsHeaders(request)
-    });
+    return json({ error: error.message }, { status: 500, headers: getCorsHeaders(request) });
   }
 }
 
 /**
- * Handle a complete chat session
- * @param {Object} params - Session parameters
- * @param {Request} params.request - The request object
- * @param {string} params.userMessage - The user's message
- * @param {string} params.conversationId - The conversation ID
- * @param {string} params.promptType - The prompt type
- * @param {Object} params.stream - Stream manager for sending responses
+ * Handle a full chat session
  */
-async function handleChatSession({
-  request,
-  userMessage,
-  conversationId,
-  promptType,
-  stream
-}) {
-  // Initialize services
+async function handleChatSession({ request, userMessage, conversationId, promptType, stream }) {
   const claudeService = createClaudeService();
   const toolService = createToolService();
 
-  // Initialize MCP client
   const shopId = request.headers.get("X-Shopify-Shop-Id");
   const shopDomain = request.headers.get("Origin");
   const customerMcpEndpoint = await getCustomerMcpEndpoint(shopDomain, conversationId);
-  const mcpClient = new MCPClient(
-    shopDomain,
-    conversationId,
-    shopId,
-    customerMcpEndpoint
-  );
+
+  const mcpClient = new MCPClient(shopDomain, conversationId, shopId, customerMcpEndpoint);
 
   try {
-    // Send conversation ID to client
     stream.sendMessage({ type: 'id', conversation_id: conversationId });
 
-    // Connect to MCP servers and get available tools
     let storefrontMcpTools = [], customerMcpTools = [];
-
     try {
       storefrontMcpTools = await mcpClient.connectToStorefrontServer();
       customerMcpTools = await mcpClient.connectToCustomerServer();
-
-      console.log(`Connected to MCP with ${storefrontMcpTools.length} tools`);
-      console.log(`Connected to customer MCP with ${customerMcpTools.length} tools`);
     } catch (error) {
-      console.warn('Failed to connect to MCP servers, continuing without tools:', error.message);
+      console.warn('MCP connection failed, continuing without tools:', error.message);
     }
 
-    // Prepare conversation state
     let conversationHistory = [];
     let productsToDisplay = [];
 
-    // Save user message to the database
     await saveMessage(conversationId, 'user', userMessage);
 
-    // Fetch all messages from the database for this conversation
     const dbMessages = await getConversationHistory(conversationId);
-
-    // Format messages for Claude API
     conversationHistory = dbMessages.map(dbMessage => {
       let content;
-      try {
-        content = JSON.parse(dbMessage.content);
-      } catch (e) {
-        content = dbMessage.content;
-      }
-      return {
-        role: dbMessage.role,
-        content
-      };
+      try { content = JSON.parse(dbMessage.content); } catch { content = dbMessage.content; }
+      return { role: dbMessage.role, content };
     });
 
-    // Execute the conversation stream
     let finalMessage = { role: 'user', content: userMessage };
-
-       while (finalMessage.stop_reason !== "end_turn") {
-  
-          finalMessage = await claudeService.streamConversation(
-          {
-            messages: conversationHistory,
-            promptType,
-            tools: mcpClient.tools
-          },
-          {
-          // Handle text chunks
+    while (finalMessage.stop_reason !== "end_turn") {
+      finalMessage = await claudeService.streamConversation(
+        { messages: conversationHistory, promptType, tools: mcpClient.tools },
+        {
           onText: (textDelta) => {
-            stream.sendMessage({
-              type: 'chunk',
-              chunk: textDelta
-            });
+            stream.sendMessage({ type: 'chunk', chunk: textDelta });
           },
-
-          // Handle complete messages
-          onMessage: (message) => {
-            conversationHistory.push({
-              role: message.role,
-              content: message.content
-            });
-
-            saveMessage(conversationId, message.role, JSON.stringify(message.content))
-              .catch((error) => {
-                console.error("Error saving message to database:", error);
-              });
-
-            // Send a completion message
+          onMessage: async (message) => {
+            conversationHistory.push({ role: message.role, content: message.content });
+            await saveMessage(conversationId, message.role, JSON.stringify(message.content)).catch(console.error);
             stream.sendMessage({ type: 'message_complete' });
           },
-
-          // Handle tool use requests
           onToolUse: async (content) => {
             const toolName = content.name;
             const toolArgs = content.input;
-            const toolUseId = content.id; // must match Claude's tool_use id exactly
-          
+            const toolUseId = content.id;
+
             try {
-              // Call the actual tool via MCP client
               const toolResponse = await mcpClient.callTool(toolName, toolArgs);
-          
-              // Prepare the result to send back to Claude
               const toolResult = toolResponse.error
                 ? { error: toolResponse.error }
                 : { result: toolResponse.result || toolResponse };
-          
-              // Send the tool_result back to Claude in the same message sequence
-              stream.sendMessage({
-                type: 'tool_result',
-                tool_use_id: toolUseId,
-                tool_result: toolResult
-              });
-          
-              // Optionally update conversation history or local state
+
+              stream.sendMessage({ type: 'tool_result', tool_use_id: toolUseId, tool_result: toolResult });
+
               if (!toolResponse.error) {
-                await toolService.handleToolSuccess(
-                  toolResponse,
-                  toolName,
-                  toolUseId,
-                  conversationHistory,
-                  productsToDisplay,
-                  conversationId
-                );
+                await toolService.handleToolSuccess(toolResponse, toolName, toolUseId, conversationHistory, productsToDisplay, conversationId);
               }
-          
-              // Signal to the stream that a new message is available for Claude to continue
+
               stream.sendMessage({ type: 'new_message' });
-          
             } catch (error) {
               console.error("Error handling tool use:", error);
-          
-              // Send an error result back to Claude, still using the same tool_use_id
               stream.sendMessage({
                 type: 'tool_result',
                 tool_use_id: toolUseId,
@@ -267,71 +160,48 @@ async function handleChatSession({
               });
             }
           },
-
-          // Handle content block completion
           onContentBlock: (contentBlock) => {
             if (contentBlock.type === 'text') {
-              stream.sendMessage({
-                type: 'content_block_complete',
-                content_block: contentBlock
-              });
+              stream.sendMessage({ type: 'content_block_complete', content_block: contentBlock });
             }
           }
         }
       );
     }
 
-    // Signal end of turn
     stream.sendMessage({ type: 'end_turn' });
 
-    // Send product results if available
     if (productsToDisplay.length > 0) {
-      stream.sendMessage({
-        type: 'product_results',
-        products: productsToDisplay
-      });
+      stream.sendMessage({ type: 'product_results', products: productsToDisplay });
     }
   } catch (error) {
-    // The streaming handler takes care of error handling
+    console.error('Error processing chat session:', error);
     throw error;
   }
 }
 
 /**
- * Get the customer MCP endpoint for a shop
- * @param {string} shopDomain - The shop domain
- * @param {string} conversationId - The conversation ID
- * @returns {string} The customer MCP endpoint
+ * Get customer MCP endpoint
  */
 async function getCustomerMcpEndpoint(shopDomain, conversationId) {
   try {
-    // Check if the customer account URL exists in the DB
     const existingUrl = await getCustomerAccountUrl(conversationId);
+    if (existingUrl) return `${existingUrl}/customer/api/mcp`;
 
-    // If URL exists, return early with the MCP endpoint
-    if (existingUrl) {
-      return `${existingUrl}/customer/api/mcp`;
-    }
-
-    // If not, query for it from the Shopify API
     const { hostname } = new URL(shopDomain);
-    const { storefront } = await unauthenticated.storefront(
-      hostname
-    );
+    const { storefront } = await unauthenticated.storefront(hostname);
 
     const response = await storefront.graphql(
       `#graphql
       query shop {
         shop {
-          customerAccountUrl
+          url
         }
-      }`,
+      }`
     );
-
+    
     const body = await response.json();
-    const customerAccountUrl = body.data.shop.customerAccountUrl;
-
-    // Store the customer account URL with conversation ID in the DB
+    const customerAccountUrl = `${body.data.shop.url}/account`;
     await storeCustomerAccountUrl(conversationId, customerAccountUrl);
 
     return `${customerAccountUrl}/customer/api/mcp`;
@@ -342,31 +212,25 @@ async function getCustomerMcpEndpoint(shopDomain, conversationId) {
 }
 
 /**
- * Gets CORS headers for the response
- * @param {Request} request - The request object
- * @returns {Object} CORS headers object
+ * CORS headers
  */
 function getCorsHeaders(request) {
   const origin = request.headers.get("Origin") || "*";
   const requestHeaders = request.headers.get("Access-Control-Request-Headers") || "Content-Type, Accept";
-
   return {
     "Access-Control-Allow-Origin": origin,
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     "Access-Control-Allow-Headers": requestHeaders,
     "Access-Control-Allow-Credentials": "true",
-    "Access-Control-Max-Age": "86400" // 24 hours
+    "Access-Control-Max-Age": "86400"
   };
 }
 
 /**
- * Get SSE headers for the response
- * @param {Request} request - The request object
- * @returns {Object} SSE headers object
+ * SSE headers
  */
 function getSseHeaders(request) {
   const origin = request.headers.get("Origin") || "*";
-
   return {
     "Content-Type": "text/event-stream",
     "Cache-Control": "no-cache",
