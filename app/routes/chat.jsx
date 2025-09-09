@@ -4,12 +4,7 @@
  */
 import { json } from "@remix-run/node";
 import MCPClient from "../mcp-client";
-import {
-  saveMessage,
-  getConversationHistory,
-  storeCustomerAccountUrl,
-  getCustomerAccountUrl
-} from "../db.server";
+import { saveMessage, getConversationHistory, storeCustomerAccountUrl, getCustomerAccountUrl } from "../db.server";
 import AppConfig from "../services/config.server";
 import { createSseStream } from "../services/streaming.server";
 import { createClaudeService } from "../services/claude.server";
@@ -17,7 +12,7 @@ import { createToolService } from "../services/tool.server";
 import { unauthenticated } from "../shopify.server";
 
 /**
- * Remix loader for GET requests
+ * Loader function for GET requests
  */
 export async function loader({ request }) {
   if (request.method === "OPTIONS") {
@@ -26,29 +21,26 @@ export async function loader({ request }) {
 
   const url = new URL(request.url);
 
-  if (url.searchParams.has('history') && url.searchParams.has('conversation_id')) {
-    return handleHistoryRequest(url.searchParams.get('conversation_id'));
+  if (url.searchParams.has("history") && url.searchParams.has("conversation_id")) {
+    return handleHistoryRequest(url.searchParams.get("conversation_id"));
   }
 
-  if (!url.searchParams.has('history') && request.headers.get("Accept") === "text/event-stream") {
+  if (!url.searchParams.has("history") && request.headers.get("Accept") === "text/event-stream") {
     return handleChatRequest(request);
   }
 
-  return json(
-    { error: AppConfig.errorMessages.apiUnsupported },
-    { status: 400, headers: getCorsHeaders(request) }
-  );
+  return json({ error: AppConfig.errorMessages.apiUnsupported }, { status: 400, headers: getCorsHeaders(request) });
 }
 
 /**
- * Remix action for POST requests
+ * Action function for POST requests
  */
 export async function action({ request }) {
   return handleChatRequest(request);
 }
 
 /**
- * Return conversation history
+ * Handle fetching conversation history
  */
 async function handleHistoryRequest(conversationId) {
   const messages = await getConversationHistory(conversationId);
@@ -56,13 +48,12 @@ async function handleHistoryRequest(conversationId) {
 }
 
 /**
- * Main chat handler (SSE)
+ * Handle chat requests (GET or POST)
  */
 async function handleChatRequest(request) {
   try {
     const body = await request.json();
     const userMessage = body.message;
-
     if (!userMessage) {
       return new Response(
         JSON.stringify({ error: AppConfig.errorMessages.missingMessage }),
@@ -79,7 +70,7 @@ async function handleChatRequest(request) {
 
     return new Response(responseStream, { headers: getSseHeaders(request) });
   } catch (error) {
-    console.error('Error in chat request handler:', error);
+    console.error("Error in chat request handler:", error);
     return json({ error: error.message }, { status: 500, headers: getCorsHeaders(request) });
   }
 }
@@ -94,94 +85,99 @@ async function handleChatSession({ request, userMessage, conversationId, promptT
   const shopId = request.headers.get("X-Shopify-Shop-Id");
   const shopDomain = request.headers.get("Origin");
   const customerMcpEndpoint = await getCustomerMcpEndpoint(shopDomain, conversationId);
-
   const mcpClient = new MCPClient(shopDomain, conversationId, shopId, customerMcpEndpoint);
 
   try {
-    stream.sendMessage({ type: 'id', conversation_id: conversationId });
+    stream.sendMessage({ type: "id", conversation_id: conversationId });
 
     let storefrontMcpTools = [], customerMcpTools = [];
     try {
       storefrontMcpTools = await mcpClient.connectToStorefrontServer();
       customerMcpTools = await mcpClient.connectToCustomerServer();
+      console.log(`Connected to MCP with ${storefrontMcpTools.length} tools`);
+      console.log(`Connected to customer MCP with ${customerMcpTools.length} tools`);
     } catch (error) {
-      console.warn('MCP connection failed, continuing without tools:', error.message);
+      console.warn("Failed to connect to MCP servers, continuing without tools:", error.message);
     }
 
-    let conversationHistory = [];
-    let productsToDisplay = [];
-
-    await saveMessage(conversationId, 'user', userMessage);
+    await saveMessage(conversationId, "user", userMessage);
 
     const dbMessages = await getConversationHistory(conversationId);
-    conversationHistory = dbMessages.map(dbMessage => {
+    const conversationHistory = dbMessages.map((msg) => {
       let content;
-      try { content = JSON.parse(dbMessage.content); } catch { content = dbMessage.content; }
-      return { role: dbMessage.role, content };
+      try {
+        content = JSON.parse(msg.content);
+      } catch (e) {
+        content = msg.content;
+      }
+      return { role: msg.role, content };
     });
 
-    let finalMessage = { role: 'user', content: userMessage };
-    while (finalMessage.stop_reason !== "end_turn") {
-      finalMessage = await claudeService.streamConversation(
-        { messages: conversationHistory, promptType, tools: mcpClient.tools },
-        {
-          onText: (textDelta) => {
-            stream.sendMessage({ type: 'chunk', chunk: textDelta });
-          },
-          onMessage: async (message) => {
-            conversationHistory.push({ role: message.role, content: message.content });
-            await saveMessage(conversationId, message.role, JSON.stringify(message.content)).catch(console.error);
-            stream.sendMessage({ type: 'message_complete' });
-          },
-          onToolUse: async (content) => {
-            const toolName = content.name;
-            const toolArgs = content.input;
-            const toolUseId = content.id;
+    // Stream conversation to Claude
+    await claudeService.streamConversation(
+      {
+        messages: conversationHistory,
+        promptType,
+        tools: mcpClient.tools
+      },
+      {
+        onText: (textDelta) => stream.sendMessage({ type: "chunk", chunk: textDelta }),
 
-            try {
-              const toolResponse = await mcpClient.callTool(toolName, toolArgs);
-              const toolResult = toolResponse.error
-                ? { error: toolResponse.error }
-                : { result: toolResponse.result || toolResponse };
+        onMessage: async (message) => {
+          conversationHistory.push({ role: message.role, content: message.content });
+          await saveMessage(conversationId, message.role, JSON.stringify(message.content));
+          stream.sendMessage({ type: "message_complete" });
+        },
 
-              stream.sendMessage({ type: 'tool_result', tool_use_id: toolUseId, tool_result: toolResult });
+        onToolUse: async (toolUse) => {
+          try {
+            const toolResponse = await mcpClient.callTool(toolUse.name, toolUse.input);
+            const toolResult = toolResponse.error
+              ? { error: toolResponse.error }
+              : { result: toolResponse.result || toolResponse };
 
-              if (!toolResponse.error) {
-                await toolService.handleToolSuccess(toolResponse, toolName, toolUseId, conversationHistory, productsToDisplay, conversationId);
-              }
+            stream.sendMessage({
+              type: "tool_result",
+              tool_use_id: toolUse.id,
+              tool_result: toolResult
+            });
 
-              stream.sendMessage({ type: 'new_message' });
-            } catch (error) {
-              console.error("Error handling tool use:", error);
-              stream.sendMessage({
-                type: 'tool_result',
-                tool_use_id: toolUseId,
-                tool_result: { error: error.message || 'Tool execution failed' }
-              });
+            if (!toolResponse.error) {
+              await toolService.handleToolSuccess(
+                toolResponse,
+                toolUse.name,
+                toolUse.id,
+                conversationHistory,
+                [],
+                conversationId
+              );
             }
-          },
-          onContentBlock: (contentBlock) => {
-            if (contentBlock.type === 'text') {
-              stream.sendMessage({ type: 'content_block_complete', content_block: contentBlock });
-            }
+          } catch (error) {
+            console.error("Error handling tool use:", error);
+            stream.sendMessage({
+              type: "tool_result",
+              tool_use_id: toolUse.id,
+              tool_result: { error: error.message || "Tool execution failed" }
+            });
+          }
+        },
+
+        onContentBlock: (contentBlock) => {
+          if (contentBlock.type === "text") {
+            stream.sendMessage({ type: "content_block_complete", content_block: contentBlock });
           }
         }
-      );
-    }
+      }
+    );
 
-    stream.sendMessage({ type: 'end_turn' });
-
-    if (productsToDisplay.length > 0) {
-      stream.sendMessage({ type: 'product_results', products: productsToDisplay });
-    }
+    stream.sendMessage({ type: "end_turn" });
   } catch (error) {
-    console.error('Error processing chat session:', error);
     throw error;
   }
 }
 
 /**
- * Get customer MCP endpoint
+ * Get customer MCP endpoint for a shop
  */
 async function getCustomerMcpEndpoint(shopDomain, conversationId) {
   try {
@@ -190,20 +186,12 @@ async function getCustomerMcpEndpoint(shopDomain, conversationId) {
 
     const { hostname } = new URL(shopDomain);
     const { storefront } = await unauthenticated.storefront(hostname);
-
     const response = await storefront.graphql(
-      `#graphql
-      query shop {
-        shop {
-          url
-        }
-      }`
+      `query shop { shop { customerAccounts { edges { node { url } } } } }`
     );
-    
-    const body = await response.json();
-    const customerAccountUrl = `${body.data.shop.url}/account`;
-    await storeCustomerAccountUrl(conversationId, customerAccountUrl);
+    const customerAccountUrl = response.data.shop.customerAccounts.edges[0].node.url;
 
+    await storeCustomerAccountUrl(conversationId, customerAccountUrl);
     return `${customerAccountUrl}/customer/api/mcp`;
   } catch (error) {
     console.error("Error getting customer MCP endpoint:", error);
@@ -212,7 +200,7 @@ async function getCustomerMcpEndpoint(shopDomain, conversationId) {
 }
 
 /**
- * CORS headers
+ * CORS headers helper
  */
 function getCorsHeaders(request) {
   const origin = request.headers.get("Origin") || "*";
@@ -227,7 +215,7 @@ function getCorsHeaders(request) {
 }
 
 /**
- * SSE headers
+ * SSE headers helper
  */
 function getSseHeaders(request) {
   const origin = request.headers.get("Origin") || "*";
@@ -238,6 +226,7 @@ function getSseHeaders(request) {
     "Access-Control-Allow-Credentials": "true",
     "Access-Control-Allow-Origin": origin,
     "Access-Control-Allow-Methods": "GET,OPTIONS,POST",
-    "Access-Control-Allow-Headers": "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version"
+    "Access-Control-Allow-Headers":
+      "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version"
   };
 }
