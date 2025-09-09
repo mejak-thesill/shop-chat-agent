@@ -26,6 +26,9 @@ export function createClaudeService(apiKey = process.env.CLAUDE_API_KEY) {
     // Get system prompt
     const systemInstruction = getSystemPrompt(promptType);
 
+    // Log which model is being used
+    console.log(`[Claude Service] Using model: ${AppConfig.api.defaultModel}`);
+
     try {
       // --- Attempt Streaming API ---
       const stream = await anthropic.messages.stream({
