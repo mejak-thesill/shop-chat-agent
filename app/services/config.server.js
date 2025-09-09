@@ -9,6 +9,7 @@ export const AppConfig = {
     defaultModel: 'claude-sonnet-4-0',
     maxTokens: 2000,
     defaultPromptType: 'standardAssistant',
+    stream: true,
   },
 
   // Error Message Templates

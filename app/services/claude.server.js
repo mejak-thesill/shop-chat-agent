@@ -17,77 +17,113 @@ export function createClaudeService(apiKey = process.env.CLAUDE_API_KEY) {
 
   /**
    * Streams a conversation with Claude
-   * @param {Object} params - Stream parameters
-   * @param {Array} params.messages - Conversation history
-   * @param {string} params.promptType - The type of system prompt to use
-   * @param {Array} params.tools - Available tools for Claude
-   * @param {Object} streamHandlers - Stream event handlers
-   * @param {Function} streamHandlers.onText - Handles text chunks
-   * @param {Function} streamHandlers.onMessage - Handles complete messages
-   * @param {Function} streamHandlers.onToolUse - Handles tool use requests
-   * @returns {Promise<Object>} The final message
+   * Falls back to non-streaming if streaming fails
    */
-  const streamConversation = async ({
-    messages,
-    promptType = AppConfig.api.defaultPromptType,
-    tools
-  }, streamHandlers) => {
-    // Get system prompt from configuration or use default
+  const streamConversation = async (
+    { messages, promptType = AppConfig.api.defaultPromptType, tools },
+    streamHandlers
+  ) => {
+    // Get system prompt
     const systemInstruction = getSystemPrompt(promptType);
 
-    // Create stream
-    const stream = await anthropic.messages.stream({
-      model: AppConfig.api.defaultModel,
-      max_tokens: AppConfig.api.maxTokens,
-      system: systemInstruction,
-      messages,
-      tools: tools && tools.length > 0 ? tools : undefined
-    });
+    try {
+      // --- Attempt Streaming API ---
+      const stream = await anthropic.messages.stream({
+        model: AppConfig.api.defaultModel, // e.g. "claude-3-7-sonnet-latest"
+        max_tokens: AppConfig.api.maxTokens,
+        system: systemInstruction,
+        messages,
+        tools: tools && tools.length > 0 ? tools : undefined,
+      });
 
-    // Set up event handlers
-    if (streamHandlers.onText) {
-      stream.on('text', streamHandlers.onText);
-    }
+      // Streaming event handlers
+      stream.on("content_block_delta", (event) => {
+        const deltaText = event.delta?.text || "";
+        if (deltaText && streamHandlers.onText) {
+          streamHandlers.onText(deltaText);
+        }
+      });
 
-    if (streamHandlers.onMessage) {
-      stream.on('message', streamHandlers.onMessage);
-    }
+      stream.on("message_stop", (event) => {
+        if (streamHandlers.onMessage) {
+          streamHandlers.onMessage(event);
+        }
+      });
 
-    if (streamHandlers.onContentBlock) {
-      stream.on('contentBlock', streamHandlers.onContentBlock);
-    }
+      stream.on("error", (err) => {
+        console.error("Claude stream error:", err);
+      });
 
-    // Wait for final message
-    const finalMessage = await stream.finalMessage();
+      // Wait for final message
+      const finalMessage = await stream.finalMessage();
 
-    // Process tool use requests
-    if (streamHandlers.onToolUse && finalMessage.content) {
-      for (const content of finalMessage.content) {
-        if (content.type === "tool_use") {
-          await streamHandlers.onToolUse(content);
+      // Process tool use requests
+      if (streamHandlers.onToolUse && finalMessage?.content) {
+        for (const content of finalMessage.content) {
+          if (content.type === "tool_use") {
+            await streamHandlers.onToolUse(content);
+          }
         }
       }
-    }
 
-    return finalMessage;
+      return finalMessage;
+    } catch (err) {
+      console.error("Streaming failed, falling back to non-streaming:", err);
+
+      // --- Non-streaming fallback ---
+      const response = await anthropic.messages.create({
+        model: AppConfig.api.defaultModel,
+        max_tokens: AppConfig.api.maxTokens,
+        system: systemInstruction,
+        messages,
+        tools: tools && tools.length > 0 ? tools : undefined,
+      });
+
+      const finalMessage = response;
+
+      // Send full text back if onText handler exists
+      if (streamHandlers.onText) {
+        for (const block of response.content) {
+          if (block.type === "text") {
+            streamHandlers.onText(block.text);
+          }
+        }
+      }
+
+      // Call onMessage once
+      if (streamHandlers.onMessage) {
+        streamHandlers.onMessage(finalMessage);
+      }
+
+      // Handle tool use if present
+      if (streamHandlers.onToolUse && finalMessage?.content) {
+        for (const content of finalMessage.content) {
+          if (content.type === "tool_use") {
+            await streamHandlers.onToolUse(content);
+          }
+        }
+      }
+
+      return finalMessage;
+    }
   };
 
   /**
    * Gets the system prompt content for a given prompt type
-   * @param {string} promptType - The prompt type to retrieve
-   * @returns {string} The system prompt content
    */
   const getSystemPrompt = (promptType) => {
-    return systemPrompts.systemPrompts[promptType]?.content ||
-      systemPrompts.systemPrompts[AppConfig.api.defaultPromptType].content;
+    return (
+      systemPrompts.systemPrompts[promptType]?.content ||
+      systemPrompts.systemPrompts[AppConfig.api.defaultPromptType].content
+    );
   };
 
   return {
     streamConversation,
-    getSystemPrompt
+    getSystemPrompt,
   };
 }
 
 export default {
-  createClaudeService
+  createClaudeService,
 };
