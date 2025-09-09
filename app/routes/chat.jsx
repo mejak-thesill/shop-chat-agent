@@ -223,48 +223,43 @@ async function handleChatSession({
           onToolUse: async (content) => {
             const toolName = content.name;
             const toolArgs = content.input;
-            const toolUseId = content.id; // important: must match for tool_result
+            const toolUseId = content.id; // must match Claude's tool_use id exactly
           
             try {
-              // Notify Claude that the tool is being used
-              stream.sendMessage({
-                type: 'tool_use',
-                tool_use_message: `Calling tool: ${toolName} with arguments: ${JSON.stringify(toolArgs)}`,
-                tool_use_id: toolUseId
-              });
-          
               // Call the actual tool via MCP client
               const toolResponse = await mcpClient.callTool(toolName, toolArgs);
           
-              // Prepare the result to send back
-              const toolResultMessage = toolResponse.error
+              // Prepare the result to send back to Claude
+              const toolResult = toolResponse.error
                 ? { error: toolResponse.error }
                 : { result: toolResponse.result || toolResponse };
           
-              // Send the tool_result back to Claude, referencing the exact tool_use_id
+              // Send the tool_result back to Claude in the same message sequence
               stream.sendMessage({
                 type: 'tool_result',
                 tool_use_id: toolUseId,
-                tool_result: toolResultMessage
+                tool_result: toolResult
               });
           
-              // Optionally, save the result or update conversation state
-              await toolService.handleToolSuccess(
-                toolResponse,
-                toolName,
-                toolUseId,
-                conversationHistory,
-                productsToDisplay,
-                conversationId
-              );
+              // Optionally update conversation history or local state
+              if (!toolResponse.error) {
+                await toolService.handleToolSuccess(
+                  toolResponse,
+                  toolName,
+                  toolUseId,
+                  conversationHistory,
+                  productsToDisplay,
+                  conversationId
+                );
+              }
           
-              // Signal that a new message is available for Claude to continue
+              // Signal to the stream that a new message is available for Claude to continue
               stream.sendMessage({ type: 'new_message' });
           
             } catch (error) {
               console.error("Error handling tool use:", error);
           
-              // Notify Claude of the error with correct tool_use_id
+              // Send an error result back to Claude, still using the same tool_use_id
               stream.sendMessage({
                 type: 'tool_result',
                 tool_use_id: toolUseId,
