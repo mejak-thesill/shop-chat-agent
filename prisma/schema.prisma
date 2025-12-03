@@ -71,3 +71,67 @@ model CustomerAccountUrl {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 }
+
+model AssistantCart {
+  id             String   @id @default(uuid())
+  shop           String
+  cartId         String   @unique      // Shopify cart token / ID
+  conversationId String?               // Link back to your Conversation if you have it
+  createdAt      DateTime @default(now())
+
+  items          AssistantCartItem[]
+}
+
+model AssistantCartItem {
+  id               String   @id @default(uuid())
+  assistantCartId  String
+  productVariantId String
+  quantity         Int
+  createdAt        DateTime @default(now())
+
+  cart AssistantCart @relation(fields: [assistantCartId], references: [id], onDelete: Cascade)
+
+  @@index([assistantCartId])
+  @@index([productVariantId])
+}
+
+model AssistantOrderAttribution {
+  id              String   @id @default(uuid())
+  shop            String
+  orderId         String   @unique
+  checkoutToken   String?          // from order.checkout_token
+  totalAttributed Float            // sum of line items that were added by assistant
+  currency        String?
+  createdAt       DateTime @default(now())
+
+  items           AssistantOrderItemAttribution[]
+}
+
+model AssistantOrderItemAttribution {
+  id               String   @id @default(uuid())
+  orderAttrId      String
+  productVariantId String
+  quantity         Int
+  linePrice        Float
+  createdAt        DateTime @default(now())
+
+  orderAttr AssistantOrderAttribution @relation(fields: [orderAttrId], references: [id], onDelete: Cascade)
+
+  @@index([orderAttrId])
+  @@index([productVariantId])
+}
+
+model AssistantEvent {
+  id               String   @id @default(uuid())
+  eventType        String
+  conversationId   String?
+  productVariantId String?
+  quantity         Int?
+  checkoutUrl      String?
+  createdAt        DateTime @default(now())
+  rawPayload       Json?
+
+  @@index([eventType])
+  @@index([conversationId])
+  @@index([productVariantId])
+}
