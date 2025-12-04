@@ -20,6 +20,24 @@ const shopify = shopifyApp({
     unstable_newEmbeddedAuthStrategy: true,
     removeRest: true,
   },
+  webhooks: {
+    CHECKOUTS_CREATE: {
+      deliveryMethod: "http",
+      callbackUrl: "/api/webhooks",
+    },
+    CHECKOUTS_UPDATE: {
+      deliveryMethod: "http",
+      callbackUrl: "/api/webhooks",
+    },
+    ORDERS_CREATE: {
+      deliveryMethod: "http",
+      callbackUrl: "/api/webhooks",
+    },
+    APP_UNINSTALLED: {
+      deliveryMethod: "http",
+      callbackUrl: "/api/webhooks",
+    },
+  },
   ...(process.env.SHOP_CUSTOM_DOMAIN
     ? { customShopDomains: [process.env.SHOP_CUSTOM_DOMAIN] }
     : {}),

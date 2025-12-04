@@ -8,26 +8,40 @@ export const action = async ({ request }) => {
 
   console.log("🔔 Incoming webhook:", topic, "from", shop);
 
-  // Parse raw webhook body
   let payload = await request.json().catch(() => ({}));
 
-  switch (topic) {
-    case "CHECKOUTS_CREATE":
-    case "CHECKOUTS_UPDATE":
-      await webhookCheckoutHandler(payload, shop);
-      break;
+  try {
+    switch (topic) {
+      case "CHECKOUTS_CREATE":
+      case "CHECKOUTS_UPDATE":
+        await webhookCheckoutHandler(payload, shop);
+        break;
 
-    case "ORDERS_CREATE":
-      await webhookOrderHandler(payload, shop);
-      break;
-    case 'APP_UNINSTALLED':
-      if (session) {
-        await db.session.deleteMany({ where: { shop } });
-      }
-      break;
-    default:
-      throw new Response('Unhandled webhook topic', { status: 404 });
+      case "ORDERS_CREATE":
+        await webhookOrderHandler(payload, shop);
+        break;
+
+      case "APP_UNINSTALLED":
+        if (session) {
+          await db.session.deleteMany({ where: { shop } });
+        }
+        break;
+
+      default:
+        console.log("⚠️ Unhandled webhook topic:", topic);
+        // DO NOT THROW — just continue
+        break;
+    }
+
+    return new Response("OK", { status: 200 });
+
+  } catch (err) {
+    console.error("❌ Webhook processing error:", err);
+    return new Response("Webhook error", { status: 500 });
   }
+};
 
-  return new Response();
+// Shopify will sometimes send GET requests to test
+export const loader = () => {
+  return new Response("Webhook endpoint ready", { status: 200 });
 };
