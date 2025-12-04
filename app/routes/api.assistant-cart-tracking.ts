@@ -1,7 +1,7 @@
 // app/routes/api.assistant-cart-tracking.ts
 import type { ActionFunctionArgs } from "@remix-run/node";
 import { json } from "@remix-run/node";
-import { prisma } from "../db.server"; // adjust to your prisma import
+import prisma from "../db.server"; // adjust to your prisma import
 
 export async function action({ request }: ActionFunctionArgs) {
   try {
