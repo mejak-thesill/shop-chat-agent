@@ -481,7 +481,7 @@
             prompt_type: promptType
           });
 
-          const streamUrl = 'https://virtual-plant-assistant-eox8v.ondigitalocean.app/chat';
+          const streamUrl = 'https://virtual-plant-assistant-dev-lpxeh.ondigitalocean.app/chat';
           const shopId = window.shopId;
 
           const response = await fetch(streamUrl, {
@@ -670,7 +670,7 @@
           messagesContainer.appendChild(loadingMessage);
 
           // Fetch history from the server
-          const historyUrl = `https://virtual-plant-assistant-eox8v.ondigitalocean.app/chat?history=true&conversation_id=${encodeURIComponent(conversationId)}`;
+          const historyUrl = `https://virtual-plant-assistant-dev-lpxeh.ondigitalocean.app/chat?history=true&conversation_id=${encodeURIComponent(conversationId)}`;
           console.log('Fetching history from:', historyUrl);
 
           const response = await fetch(historyUrl, {
@@ -864,7 +864,7 @@
           attemptCount++;
 
           try {
-            const tokenUrl = 'https://virtual-plant-assistant-eox8v.ondigitalocean.app/auth/token-status?conversation_id=' +
+            const tokenUrl = 'https://virtual-plant-assistant-dev-lpxeh.ondigitalocean.app/auth/token-status?conversation_id=' +
               encodeURIComponent(conversationId);
             const response = await fetch(tokenUrl);
 
