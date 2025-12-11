@@ -558,8 +558,15 @@
             ShopAIChat.UI.scrollToBottom();
             const checkoutUrlChunk = this.detectCheckoutLink(data.content);
             if (checkoutUrlChunk) {
-              ShopAIChat.trackEvent("assistant_checkout_click", {
-                checkout_url: checkoutUrlChunk
+              const checkoutToken = this.extractCheckoutToken(checkoutUrlChunk);
+              const conversationId = sessionStorage.getItem("shopAiConversationId");
+              const shop = window.Shopify?.shop;
+
+              ShopAIChat.trackEvent("assistant_checkout_link", {
+                checkout_url: checkoutUrlChunk,
+                checkout_token: checkoutToken,
+                conversation_id: conversationId,
+                shop
               });
             }
             break;
@@ -570,8 +577,15 @@
             ShopAIChat.UI.scrollToBottom();
             const checkoutUrlFinal = this.detectCheckoutLink(data.message);
             if (checkoutUrlFinal) {
-              ShopAIChat.trackEvent("assistant_checkout_click", {
-                checkout_url: checkoutUrlFinal
+              const checkoutToken = this.extractCheckoutToken(checkoutUrlChunk);
+              const conversationId = sessionStorage.getItem("shopAiConversationId");
+              const shop = window.Shopify?.shop;
+
+              ShopAIChat.trackEvent("assistant_checkout_link", {
+                checkout_url: checkoutUrlChunk,
+                checkout_token: checkoutToken,
+                conversation_id: conversationId,
+                shop
               });
             }
             break;
@@ -777,7 +791,12 @@
         if (!urls) return null;
 
         return urls.find(url => url.includes("/checkouts/")) || null;
-      }
+      },
+      extractCheckoutToken: function (url) {
+        // Shopify checkout URLs contain /checkouts/<token>
+        const match = url.match(/\/checkouts\/([^\/\?]+)/);
+        return match ? match[1] : null;
+      },
     },
 
     /**
