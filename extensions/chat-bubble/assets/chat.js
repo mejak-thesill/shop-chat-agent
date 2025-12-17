@@ -381,7 +381,7 @@
           }
           // If it's a checkout link, replace the text
           else if (url.includes('/cart') || url.includes('checkout')) {
-            return '<a href="' + url + '" target="_blank" rel="noopener noreferrer">click here to proceed to checkout</a>';
+            return `<a target="_blank" rel="noopener noreferrer" class="shop-ai-checkout-link" data-checkout-url="${url}">click here to proceed to checkout</a>`;
           } else {
             // For normal links, preserve the original text
             return '<a href="' + url + '" target="_blank" rel="noopener noreferrer">' + text + '</a>';
@@ -556,13 +556,13 @@
             currentMessageElement.dataset.rawText += data.chunk;
             currentMessageElement.textContent = currentMessageElement.dataset.rawText;
             ShopAIChat.UI.scrollToBottom();
-            const checkoutUrlChunk = this.detectCheckoutLink(data.content);
+            const checkoutUrlChunk = this.detectCheckoutLink(data.content || data.delta || "");
             if (checkoutUrlChunk) {
               const checkoutToken = this.extractCheckoutToken(checkoutUrlChunk);
               const conversationId = sessionStorage.getItem("shopAiConversationId");
               const shop = window.Shopify?.shop;
 
-              ShopAIChat.trackEvent("assistant_checkout_link", {
+              this.trackEvent("assistant_checkout_link", {
                 checkout_url: checkoutUrlChunk,
                 checkout_token: checkoutToken,
                 conversation_id: conversationId,
@@ -575,13 +575,13 @@
             ShopAIChat.UI.removeTypingIndicator();
             ShopAIChat.Formatting.formatMessageContent(currentMessageElement);
             ShopAIChat.UI.scrollToBottom();
-            const checkoutUrlFinal = this.detectCheckoutLink(data.message);
+            const checkoutUrlFinal = this.detectCheckoutLink(data.message || data.final_text || "");
             if (checkoutUrlFinal) {
               const checkoutToken = this.extractCheckoutToken(checkoutUrlChunk);
               const conversationId = sessionStorage.getItem("shopAiConversationId");
               const shop = window.Shopify?.shop;
 
-              ShopAIChat.trackEvent("assistant_checkout_link", {
+              this.trackEvent("assistant_checkout_link", {
                 checkout_url: checkoutUrlChunk,
                 checkout_token: checkoutToken,
                 conversation_id: conversationId,
@@ -645,7 +645,7 @@
             })();
 
             items.forEach(item => {
-              ShopAIChat.trackEvent("assistant_add_to_cart", item);
+              ShopAIChat.API.trackEvent("assistant_add_to_cart", item);
             });
             break;
 
@@ -750,6 +750,7 @@
       trackEvent: async function (eventName, payload = {}) {
         try {
           const conversationId = sessionStorage.getItem("shopAiConversationId");
+          console.log('conversationId', conversationId)
 
           await fetch("https://a62250oqm4.execute-api.us-east-1.amazonaws.com/dev/assistant/track", {
             method: "POST",
@@ -1026,6 +1027,18 @@
         const welcomeMessage = window.shopChatConfig?.welcomeMessage || "👋 Hi there! How can I help you today?";
         this.Message.add(welcomeMessage, 'assistant', this.UI.elements.messagesContainer);
       }
+
+      document.addEventListener('click', function (event) {
+        if (event.target && event.target.classList.contains('shop-ai-checkout-link')) {
+          const url = event.target.getAttribute('data-checkout-url');
+
+          ShopAIChat.API.trackEvent('assistant-checkout-click', {
+            checkout_url: url
+          })
+
+          console.log('Checkout link created', url)
+        }
+      })
     }
   };
 
