@@ -201,7 +201,7 @@ export default function AppHome() {
                   Engagement Metrics
                 </Text>
                 <InlineStack align="space-between" gap="400" wrap={false}>
-                  <Metric title="Orders" value={`$${engagement.orders?.toFixed(2)}` || "$0"} tone={getTone(`${engagement.orders_delta_percent}%`)} delta={`${engagement.orders_delta_percent}%` || "0%"} />
+                  <Metric title="Orders" value={engagement.orders || "0"} tone={getTone(`${engagement.orders_delta_percent}%`)} delta={`${engagement.orders_delta_percent}%` || "0%"} />
                   <Metric title="Assistant Starts" value={engagement.assistant_starts || "0"} tone={getTone(`${engagement.assistant_starts_delta_percent}%`)} delta={`${engagement.assistant_starts_delta_percent}%` || "0%"} />
                   <Metric title="Checkout Clicks" value={engagement.checkout_clicks || "0"} tone={getTone(`${engagement.checkout_clicks_delta_percent}%`)} delta={`${engagement.checkout_clicks_delta_percent}%` || "0%"} />
                   <Metric title="Add to Cart Clicks" value={engagement.add_to_cart_clicks || "0"} tone={getTone(`${engagement.add_to_cart_clicks_delta_percent}%`)} delta={`${engagement.add_to_cart_clicks_delta_percent}%` || "0%"} />
