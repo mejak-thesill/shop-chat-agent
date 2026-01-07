@@ -157,9 +157,9 @@ export default function AppHome() {
                   {
                     overview && (
                       <>
-                        <Metric title="Total Revenue" value={`$${overview.total_revenue?.toFixed(2)}` || "$0"} tone={getTone(overview.total_revenue)} delta={overview.total_revenue || "0%"} />
-                        <Metric title="Conversion Rate" value={`${overview.conversion_rate}%` || "0%"} tone={getTone(overview.conversion_rate)} delta={overview.conversion_rate || "0%"} />
-                        <Metric title="AOV" value={`$${overview.aov}` || "$0"} tone={getTone(overview.aov)} delta={overview.aov || "0%"} />
+                        <Metric title="Total Revenue" value={`$${overview.total_revenue?.toFixed(2)}` || "$0"} tone={getTone(overview.total_revenue)} delta={`${overview.total_revenue_delta_percent}%` || "0%"} />
+                        <Metric title="Conversion Rate" value={`${overview.conversion_rate}%` || "0%"} tone={getTone(overview.conversion_rate)} delta={`${overview.conversion_rate_delta_percent}%` || "0%"} />
+                        <Metric title="AOV" value={`$${overview.aov}` || "$0"} tone={getTone(overview.aov)} delta={`${overview.aov_delta_percent}%` || "0%"} />
                         {/* <Metric title="Total Messages" value={`${overview.totalMessages}` || "$0"} tone="critical" delta={overview.totalMessages_delta || "0%"} />
                         <Metric title="Assistant Messages" value={`${overview.assistantMessages}` || "$0"} tone="critical" delta={overview.assistantMessages_delta || "0%"} /> */}
                       </>
@@ -201,9 +201,10 @@ export default function AppHome() {
                   Engagement Metrics
                 </Text>
                 <InlineStack align="space-between" gap="400" wrap={false}>
-                  <Metric title="Assistant Starts" value={engagement.assistant_starts || "0"} tone="success" delta={engagement.assistant_starts_delta || "0%"} />
-                  <Metric title="Checkout Clicks" value={engagement.checkout_clicks || "0"} tone="warning" delta={engagement.checkout_clicks_delta || "0%"} />
-                  <Metric title="Add to Cart Clicks" value={engagement.add_to_cart_clicks || "0"} tone="critical" delta={engagement.add_to_cart_clicks_delta || "0%"} />
+                  <Metric title="Orders" value={`$${overview.orders?.toFixed(2)}` || "$0"} tone={getTone(overview.orders)} delta={`${overview.orders_delta_percent}%` || "0%"} />
+                  <Metric title="Assistant Starts" value={engagement.assistant_starts || "0"} tone="success" delta={`${engagement.assistant_starts_delta_percent}%` || "0%"} />
+                  <Metric title="Checkout Clicks" value={engagement.checkout_clicks || "0"} tone="warning" delta={`${engagement.checkout_clicks_delta_percent}%` || "0%"} />
+                  <Metric title="Add to Cart Clicks" value={engagement.add_to_cart_clicks || "0"} tone="critical" delta={`${engagement.add_to_cart_clicks_delta_percent}%` || "0%"} />
                 </InlineStack>
               </BlockStack>
             </Card>
