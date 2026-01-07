@@ -1,8 +1,8 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
-client_id = "a0bdeed338efacfb985217980b471dd9"
-name = "shop-chat-agent"
-application_url = "https://virtual-plant-assistant-dev-lpxeh.ondigitalocean.app/"
+client_id = "dc44869cf256da1d83c195842565f5ec"
+name = "shop-chat-agent-dev"
+application_url = "https://example.com"
 embedded = true
 
 [webhooks]
@@ -14,3 +14,6 @@ scopes = "customer_read_customers,customer_read_orders,customer_read_store_credi
 
 [auth]
 redirect_urls = [ "https://example.com/api/auth" ]
+
+[build]
+automatically_update_urls_on_dev = true

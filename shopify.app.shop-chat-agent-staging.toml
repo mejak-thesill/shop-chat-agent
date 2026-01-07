@@ -1,9 +1,12 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
-client_id = "a0bdeed338efacfb985217980b471dd9"
-name = "shop-chat-agent"
+client_id = "fb66ef87d982a226e1927a7453bafb96"
+name = "shop-chat-agent-staging"
 application_url = "https://virtual-plant-assistant-dev-lpxeh.ondigitalocean.app/"
 embedded = true
+
+[build]
+automatically_update_urls_on_dev = true
 
 [webhooks]
 api_version = "2026-01"

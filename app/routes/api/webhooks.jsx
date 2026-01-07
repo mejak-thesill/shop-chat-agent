@@ -1,7 +1,7 @@
-import { authenticate } from "../shopify.server";
-import db from "../db.server";
-import { webhookCheckoutHandler } from "./webhooks/checkout";
-import { webhookOrderHandler } from "./webhooks/order";
+import { authenticate } from "../../shopify.server";
+import db from "../../db.server";
+import { webhookCheckoutHandler } from "../webhooks/checkout";
+import { webhookOrderHandler } from "../webhooks/order";
 
 export const action = async ({ request }) => {
   const { shop, session, topic } = await authenticate.webhook(request);

@@ -4,7 +4,7 @@
  * This module handles the chat interface for the Shopify AI Chat application.
  * It manages the UI interactions, API communication, and message rendering.
  */
-(function() {
+(function () {
   'use strict';
 
   /**
@@ -22,7 +22,7 @@
        * Initialize UI elements and event listeners
        * @param {HTMLElement} container - The main container element
        */
-      init: function(container) {
+      init: function (container) {
         if (!container) return;
 
         // Cache DOM elements
@@ -51,7 +51,7 @@
       /**
        * Set up all event listeners for UI interactions
        */
-      setupEventListeners: function() {
+      setupEventListeners: function () {
         const { chatBubble, closeButton, chatInput, sendButton, messagesContainer } = this.elements;
 
         // Toggle chat window visibility
@@ -89,7 +89,7 @@
         window.addEventListener('resize', () => this.scrollToBottom());
 
         // Add global click handler for auth links
-        document.addEventListener('click', function(event) {
+        document.addEventListener('click', function (event) {
           if (event.target && event.target.classList.contains('shop-auth-trigger')) {
             event.preventDefault();
             if (window.shopAuthUrl) {
@@ -102,7 +102,7 @@
       /**
        * Setup mobile-specific viewport adjustments
        */
-      setupMobileViewport: function() {
+      setupMobileViewport: function () {
         const setViewportHeight = () => {
           document.documentElement.style.setProperty('--viewport-height', `${window.innerHeight}px`);
         };
@@ -113,7 +113,7 @@
       /**
        * Toggle chat window visibility
        */
-      toggleChatWindow: function() {
+      toggleChatWindow: function () {
         const { chatWindow, chatInput } = this.elements;
 
         chatWindow.classList.toggle('active');
@@ -137,7 +137,7 @@
       /**
        * Close chat window
        */
-      closeChatWindow: function() {
+      closeChatWindow: function () {
         const { chatWindow, chatInput } = this.elements;
 
         chatWindow.classList.remove('active');
@@ -152,7 +152,7 @@
       /**
        * Scroll messages container to bottom
        */
-      scrollToBottom: function() {
+      scrollToBottom: function () {
         const { messagesContainer } = this.elements;
         setTimeout(() => {
           messagesContainer.scrollTop = messagesContainer.scrollHeight;
@@ -162,7 +162,7 @@
       /**
        * Show typing indicator in the chat
        */
-      showTypingIndicator: function() {
+      showTypingIndicator: function () {
         const { messagesContainer } = this.elements;
 
         const typingIndicator = document.createElement('div');
@@ -175,7 +175,7 @@
       /**
        * Remove typing indicator from the chat
        */
-      removeTypingIndicator: function() {
+      removeTypingIndicator: function () {
         const { messagesContainer } = this.elements;
 
         const typingIndicator = messagesContainer.querySelector('.shop-ai-typing-indicator');
@@ -188,7 +188,7 @@
        * Display product results in the chat
        * @param {Array} products - Array of product data objects
        */
-      displayProductResults: function(products) {
+      displayProductResults: function (products) {
         const { messagesContainer } = this.elements;
 
         // Create a wrapper for the product section
@@ -232,7 +232,7 @@
        * @param {HTMLInputElement} chatInput - The input element
        * @param {HTMLElement} messagesContainer - The messages container
        */
-      send: async function(chatInput, messagesContainer) {
+      send: async function (chatInput, messagesContainer) {
         const userMessage = chatInput.value.trim();
         const conversationId = sessionStorage.getItem('shopAiConversationId');
 
@@ -261,7 +261,7 @@
        * @param {HTMLElement} messagesContainer - The messages container
        * @returns {HTMLElement} The created message element
        */
-      add: function(text, sender, messagesContainer) {
+      add: function (text, sender, messagesContainer) {
         const messageElement = document.createElement('div');
         messageElement.classList.add('shop-ai-message', sender);
 
@@ -283,7 +283,7 @@
        * @param {string} toolMessage - Tool use message content
        * @param {HTMLElement} messagesContainer - The messages container
        */
-      addToolUse: function(toolMessage, messagesContainer) {
+      addToolUse: function (toolMessage, messagesContainer) {
         // Parse the tool message to extract tool name and arguments
         const match = toolMessage.match(/Calling tool: (\w+) with arguments: (.+)/);
         if (!match) {
@@ -332,7 +332,7 @@
         }
 
         // Add click handler to toggle arguments visibility
-        headerElement.addEventListener('click', function() {
+        headerElement.addEventListener('click', function () {
           const isExpanded = argsElement.classList.contains('expanded');
           if (isExpanded) {
             argsElement.classList.remove('expanded');
@@ -360,7 +360,7 @@
        * Format message content with markdown and links
        * @param {HTMLElement} element - The element to format
        */
-      formatMessageContent: function(element) {
+      formatMessageContent: function (element) {
         if (!element || !element.dataset.rawText) return;
 
         const rawText = element.dataset.rawText;
@@ -373,7 +373,7 @@
         processedText = processedText.replace(markdownLinkRegex, (match, text, url) => {
           // Check if it's an auth URL
           if (url.includes('shopify.com/authentication') &&
-             (url.includes('oauth/authorize') || url.includes('authentication'))) {
+            (url.includes('oauth/authorize') || url.includes('authentication'))) {
             // Store the auth URL in a global variable for later use - this avoids issues with onclick handlers
             window.shopAuthUrl = url;
             // Just return normal link that will be handled by the document click handler
@@ -381,7 +381,7 @@
           }
           // If it's a checkout link, replace the text
           else if (url.includes('/cart') || url.includes('checkout')) {
-            return '<a href="' + url + '" target="_blank" rel="noopener noreferrer">click here to proceed to checkout</a>';
+            return `<a target="_blank" rel="noopener noreferrer" class="shop-ai-checkout-link" data-checkout-url="${url}">click here to proceed to checkout</a>`;
           } else {
             // For normal links, preserve the original text
             return '<a href="' + url + '" target="_blank" rel="noopener noreferrer">' + text + '</a>';
@@ -400,7 +400,7 @@
        * @param {string} text - Markdown text to convert
        * @returns {string} HTML content
        */
-      convertMarkdownToHtml: function(text) {
+      convertMarkdownToHtml: function (text) {
         text = text.replace(/(\*\*|__)(.*?)\1/g, '<strong>$2</strong>');
         const lines = text.split('\n');
         let currentList = null;
@@ -470,7 +470,7 @@
        * @param {string} conversationId - Conversation ID for context
        * @param {HTMLElement} messagesContainer - The messages container
        */
-      streamResponse: async function(userMessage, conversationId, messagesContainer) {
+      streamResponse: async function (userMessage, conversationId, messagesContainer) {
         let currentMessageElement = null;
 
         try {
@@ -481,7 +481,7 @@
             prompt_type: promptType
           });
 
-          const streamUrl = 'https://virtual-plant-assistant-eox8v.ondigitalocean.app/chat';
+          const streamUrl = 'https://virtual-plant-assistant-dev-lpxeh.ondigitalocean.app/chat';
           const shopId = window.shopId;
 
           const response = await fetch(streamUrl, {
@@ -543,7 +543,7 @@
        * @param {string} userMessage - The original user message
        * @param {Function} updateCurrentElement - Callback to update the current element reference
        */
-      handleStreamEvent: function(data, currentMessageElement, messagesContainer, userMessage, updateCurrentElement) {
+      handleStreamEvent: function (data, currentMessageElement, messagesContainer, userMessage, updateCurrentElement) {
         switch (data.type) {
           case 'id':
             if (data.conversation_id) {
@@ -556,12 +556,38 @@
             currentMessageElement.dataset.rawText += data.chunk;
             currentMessageElement.textContent = currentMessageElement.dataset.rawText;
             ShopAIChat.UI.scrollToBottom();
+            const checkoutUrlChunk = this.detectCheckoutLink(data.content || data.delta || "");
+            if (checkoutUrlChunk) {
+              const checkoutToken = this.extractCheckoutToken(checkoutUrlChunk);
+              const conversationId = sessionStorage.getItem("shopAiConversationId");
+              const shop = window.Shopify?.shop;
+
+              this.trackEvent("assistant_checkout_link", {
+                checkout_url: checkoutUrlChunk,
+                checkout_token: checkoutToken,
+                conversation_id: conversationId,
+                shop
+              });
+            }
             break;
 
           case 'message_complete':
             ShopAIChat.UI.removeTypingIndicator();
             ShopAIChat.Formatting.formatMessageContent(currentMessageElement);
             ShopAIChat.UI.scrollToBottom();
+            const checkoutUrlFinal = this.detectCheckoutLink(data.message || data.final_text || "");
+            if (checkoutUrlFinal) {
+              const checkoutToken = this.extractCheckoutToken(checkoutUrlChunk);
+              const conversationId = sessionStorage.getItem("shopAiConversationId");
+              const shop = window.Shopify?.shop;
+
+              this.trackEvent("assistant_checkout_link", {
+                checkout_url: checkoutUrlChunk,
+                checkout_token: checkoutToken,
+                conversation_id: conversationId,
+                shop
+              });
+            }
             break;
 
           case 'end_turn':
@@ -593,6 +619,34 @@
             if (data.tool_use_message) {
               ShopAIChat.Message.addToolUse(data.tool_use_message, messagesContainer);
             }
+            const items = this.extractToolUseItems(data.tool_use_message);
+
+            const BACKEND_BASE_URL = "https://a62250oqm4.execute-api.us-east-1.amazonaws.com/dev";
+
+            (async () => {
+              try {
+                const conversationId = sessionStorage.getItem("shopAiConversationId");
+                const cartId = window.shopifyCartToken;
+                const shop = window.Shopify.shop;
+
+                await fetch(`${BACKEND_BASE_URL}/assistant/track`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    shop,
+                    cartId,
+                    conversationId,
+                    items
+                  })
+                });
+              } catch (err) {
+                console.error("AssistantCart tracking failed:", err);
+              }
+            })();
+
+            items.forEach(item => {
+              ShopAIChat.API.trackEvent("assistant_add_to_cart", item);
+            });
             break;
 
           case 'new_message':
@@ -621,7 +675,7 @@
        * @param {string} conversationId - Conversation ID
        * @param {HTMLElement} messagesContainer - The messages container
        */
-      fetchChatHistory: async function(conversationId, messagesContainer) {
+      fetchChatHistory: async function (conversationId, messagesContainer) {
         try {
           // Show a loading message
           const loadingMessage = document.createElement('div');
@@ -630,7 +684,7 @@
           messagesContainer.appendChild(loadingMessage);
 
           // Fetch history from the server
-          const historyUrl = `https://virtual-plant-assistant-eox8v.ondigitalocean.app/chat?history=true&conversation_id=${encodeURIComponent(conversationId)}`;
+          const historyUrl = `https://virtual-plant-assistant-dev-lpxeh.ondigitalocean.app/chat?history=true&conversation_id=${encodeURIComponent(conversationId)}`;
           console.log('Fetching history from:', historyUrl);
 
           const response = await fetch(historyUrl, {
@@ -692,7 +746,58 @@
           // Clear the conversation ID since we couldn't fetch this conversation
           sessionStorage.removeItem('shopAiConversationId');
         }
-      }
+      },
+      trackEvent: async function (eventName, payload = {}) {
+        try {
+          const conversationId = sessionStorage.getItem("shopAiConversationId");
+          console.log('conversationId', conversationId)
+
+          await fetch("https://a62250oqm4.execute-api.us-east-1.amazonaws.com/dev/assistant/track", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              event: eventName,
+              conversation_id: conversationId,
+              timestamp: Date.now(),
+              ...payload
+            })
+          }).catch(err => console.error("Tracking error:", err));
+        } catch (err) {
+          console.error("trackEvent error:", err);
+        }
+      },
+      extractToolUseItems: function (toolMessage) {
+        try {
+          const match = toolMessage.match(/with arguments:\s*(\{.*\})/);
+          if (!match) return [];
+
+          const args = JSON.parse(match[1]);
+          if (!args.add_items || !Array.isArray(args.add_items)) return [];
+
+          return args.add_items.map(item => ({
+            product_variant_id: item.product_variant_id,
+            quantity: item.quantity || 1
+          }));
+        } catch (err) {
+          console.error("extractToolUseItems error:", err);
+          return [];
+        }
+      },
+      detectCheckoutLink: function (text) {
+        if (!text) return null;
+
+        const urlRegex = /(https?:\/\/[^\s]+)/g;
+        const urls = text.match(urlRegex);
+
+        if (!urls) return null;
+
+        return urls.find(url => url.includes("/checkouts/")) || null;
+      },
+      extractCheckoutToken: function (url) {
+        // Shopify checkout URLs contain /checkouts/<token>
+        const match = url.match(/\/checkouts\/([^\/\?]+)/);
+        return match ? match[1] : null;
+      },
     },
 
     /**
@@ -703,7 +808,7 @@
        * Opens an authentication popup window
        * @param {string|HTMLElement} authUrlOrElement - The auth URL or link element that was clicked
        */
-      openAuthPopup: function(authUrlOrElement) {
+      openAuthPopup: function (authUrlOrElement) {
         let authUrl;
         if (typeof authUrlOrElement === 'string') {
           // If a string URL was passed directly
@@ -755,7 +860,7 @@
        * @param {string} conversationId - Conversation ID
        * @param {HTMLElement} messagesContainer - The messages container
        */
-      startTokenPolling: function(conversationId, messagesContainer) {
+      startTokenPolling: function (conversationId, messagesContainer) {
         if (!conversationId) return;
 
         console.log('Starting token polling for conversation:', conversationId);
@@ -779,7 +884,7 @@
           attemptCount++;
 
           try {
-            const tokenUrl = 'https://virtual-plant-assistant-eox8v.ondigitalocean.app/auth/token-status?conversation_id=' +
+            const tokenUrl = 'https://virtual-plant-assistant-dev-lpxeh.ondigitalocean.app/auth/token-status?conversation_id=' +
               encodeURIComponent(conversationId);
             const response = await fetch(tokenUrl);
 
@@ -828,7 +933,7 @@
        * @param {Object} product - Product data
        * @returns {HTMLElement} Product card element
        */
-      createCard: function(product) {
+      createCard: function (product) {
         const card = document.createElement('div');
         card.classList.add('shop-ai-product-card');
 
@@ -840,7 +945,7 @@
         const image = document.createElement('img');
         image.src = product.image_url || 'https://cdn.shopify.com/s/files/1/0533/2089/files/placeholder-images-image_large.png';
         image.alt = product.title;
-        image.onerror = function() {
+        image.onerror = function () {
           // If image fails to load, use a fallback placeholder
           this.src = 'https://cdn.shopify.com/s/files/1/0533/2089/files/placeholder-images-image_large.png';
         };
@@ -881,7 +986,7 @@
         button.dataset.productId = product.id;
 
         // Add click handler for the button
-        button.addEventListener('click', function() {
+        button.addEventListener('click', function () {
           // Send message to add this product to cart
           const input = document.querySelector('.shop-ai-chat-input input');
           if (input) {
@@ -904,7 +1009,7 @@
     /**
      * Initialize the chat application
      */
-    init: function() {
+    init: function () {
       // Initialize UI
       const container = document.querySelector('.shop-ai-chat-container');
       if (!container) return;
@@ -922,11 +1027,23 @@
         const welcomeMessage = window.shopChatConfig?.welcomeMessage || "👋 Hi there! How can I help you today?";
         this.Message.add(welcomeMessage, 'assistant', this.UI.elements.messagesContainer);
       }
+
+      document.addEventListener('click', function (event) {
+        if (event.target && event.target.classList.contains('shop-ai-checkout-link')) {
+          const url = event.target.getAttribute('data-checkout-url');
+
+          ShopAIChat.API.trackEvent('assistant-checkout-click', {
+            checkout_url: url
+          })
+
+          console.log('Checkout link created', url)
+        }
+      })
     }
   };
 
   // Initialize the application when DOM is ready
-  document.addEventListener('DOMContentLoaded', function() {
+  document.addEventListener('DOMContentLoaded', function () {
     ShopAIChat.init();
   });
 })();

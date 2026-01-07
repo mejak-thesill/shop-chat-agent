@@ -34,6 +34,7 @@ if (host === "localhost") {
     host: host,
     port: parseInt(process.env.FRONTEND_PORT) || 8002,
     clientPort: 443,
+    overlay: false
   };
 }
 
@@ -69,5 +70,9 @@ export default defineConfig({
   },
   optimizeDeps: {
     include: ["@shopify/app-bridge-react", "@shopify/polaris"],
+    exclude: ["typescript"], // 🚫 Prevent TypeScript from being bundled in browser
+  },
+  ssr: {
+    external: ["typescript"], // 🚫 Keep TypeScript server-only
   },
 });
