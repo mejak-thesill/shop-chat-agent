@@ -1,7 +1,7 @@
 import { json } from "@remix-run/node";
 import type { ActionFunctionArgs } from "@remix-run/node";
 import crypto from "node:crypto";
-import prisma from "../../db.server"; /// adjust import
+import prisma from "../db.server"; /// adjust import
 
 function getHeader(request: Request, name: string) {
   return request.headers.get(name) ?? request.headers.get(name.toLowerCase());

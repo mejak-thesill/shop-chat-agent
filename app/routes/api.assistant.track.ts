@@ -1,7 +1,7 @@
 import { json } from "@remix-run/node";
 import type { ActionFunctionArgs } from "@remix-run/node";
 import crypto from "node:crypto";
-import prisma from "../../db.server"; // adjust if your prisma import path differs
+import prisma from "../db.server"; // adjust if your prisma import path differs
 
 function corsHeaders(origin: string | null) {
   return {

@@ -1,6 +1,6 @@
 import { json } from "@remix-run/node";
 import type { LoaderFunctionArgs } from "@remix-run/node";
-import prisma from "../../db.server";  // adjust import
+import prisma from "../db.server";  // adjust import
 
 function corsHeaders(origin: string | null) {
   return {
