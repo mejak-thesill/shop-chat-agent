@@ -71,8 +71,11 @@ async function fetchPopularQuestions(limit = 10) {
 // ---------------- Engagement ----------------
 async function engagementForRange(from: Date, to: Date) {
   const addToCartEvents = await fetchEvents("assistant_add_to_cart", from, to);
+  console.log("🚀 ~ engagementForRange ~ addToCartEvents:", addToCartEvents)
   const checkoutClickEvents = await fetchEvents("assistant_checkout_click", from, to);
-  const orders = await fetchEvents("order_completed", from, to);
+  console.log("🚀 ~ engagementForRange ~ checkoutClickEvents:", checkoutClickEvents)
+  const orders = await fetchEvents("orders/create", from, to);
+  console.log("🚀 ~ engagementForRange ~ orders:", orders)
 
   // "assistant_starts" = count assistant text blocks in Message table (existing logic style)
   // We keep it simple and match your old intention: count assistant messages rows (not event-based).
