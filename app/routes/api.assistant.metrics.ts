@@ -71,11 +71,8 @@ async function fetchPopularQuestions(limit = 10) {
 // ---------------- Engagement ----------------
 async function engagementForRange(from: Date, to: Date) {
   const addToCartEvents = await fetchEvents("assistant_add_to_cart", from, to);
-  console.log("🚀 ~ engagementForRange ~ addToCartEvents:", addToCartEvents)
   const checkoutClickEvents = await fetchEvents("assistant_checkout_click", from, to);
-  console.log("🚀 ~ engagementForRange ~ checkoutClickEvents:", checkoutClickEvents)
   const orders = await fetchEvents("orders/create", from, to);
-  console.log("🚀 ~ engagementForRange ~ orders:", orders)
 
   // "assistant_starts" = count assistant text blocks in Message table (existing logic style)
   // We keep it simple and match your old intention: count assistant messages rows (not event-based).
@@ -172,9 +169,7 @@ async function fetchTopProducts(from: Date, to: Date, limit = 10) {
 // ---------------- Overview ----------------
 async function overviewForRange(from: Date, to: Date) {
   const checkoutClicks = await fetchEvents("assistant_checkout_click", from, to);
-  console.log("🚀 ~ overviewForRange ~ checkoutClicks:", checkoutClicks)
   const orderEvents = await fetchEvents("orders/create", from, to);
-  console.log("🚀 ~ overviewForRange ~ orderEvents:", orderEvents)
 
   let totalRevenue = 0;
   for (const ev of orderEvents) {
@@ -204,10 +199,8 @@ async function overviewForRange(from: Date, to: Date) {
 
 async function fetchOverviewWithDelta(from: Date, to: Date) {
   const current = await overviewForRange(from, to);
-  console.log("🚀 ~ fetchOverviewWithDelta ~ current:", current)
   const { prevFrom, prevTo } = periodBefore(from, to);
   const prev = await overviewForRange(prevFrom, prevTo);
-  console.log("🚀 ~ fetchOverviewWithDelta ~ prev:", prev)
 
   return {
     ...current,

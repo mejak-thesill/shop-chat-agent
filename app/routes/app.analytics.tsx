@@ -21,6 +21,7 @@ import { useState, useCallback } from "react";
 export const loader = async ({ request }) => {
   try {
     const url = new URL(request.url);
+    const BASE_URL = "https://virtual-plant-assistant-dev-lpxeh.ondigitalocean.app/api";
 
     console.log("🚀 ~ AppHome ~ dateRange:", (new Date()).getMonth())
 
@@ -28,7 +29,7 @@ export const loader = async ({ request }) => {
     const to = url.searchParams.get("to") || "2025-10-11";
 
     // Popular Questions
-    const popularQuestionsApiUrl = `https://a62250oqm4.execute-api.us-east-1.amazonaws.com/dev/assistant/metrics?metric_type=popular_questions&from=${from}&to=${to}`;
+    const popularQuestionsApiUrl = `${BASE_URL}/assistant/metrics?metric_type=popular_questions&from=${from}&to=${to}`;
     const popularQuestionsRes = await fetch(popularQuestionsApiUrl);
     if (!popularQuestionsRes.ok) throw new Error(`API Error: ${popularQuestionsRes.status}`);
     const popularQuestionsData = await popularQuestionsRes.json();
@@ -36,7 +37,7 @@ export const loader = async ({ request }) => {
     const finalPopularQuestionsData = popularQuestionsData.filter((item: any) => typeof item.question === "string" && item.question.trim() !== "");
 
     // Top Products
-    const topProductsApiUrl = `https://a62250oqm4.execute-api.us-east-1.amazonaws.com/dev/assistant/metrics?metric_type=top_products&from=${from}&to=${to}`;
+    const topProductsApiUrl = `${BASE_URL}/assistant/metrics?metric_type=top_products&from=${from}&to=${to}`;
     console.log("🚀 ~ loader ~ topProductsApiUrl:", topProductsApiUrl)
     const topProductsRes = await fetch(topProductsApiUrl);
     if (!topProductsRes.ok) throw new Error(`API Error: ${topProductsRes.status}`);
@@ -50,13 +51,13 @@ export const loader = async ({ request }) => {
     ]);
 
     // Overview
-    const overviewApiUrl = `https://a62250oqm4.execute-api.us-east-1.amazonaws.com/dev/assistant/metrics?metric_type=overview&from=${from}&to=${to}`;
+    const overviewApiUrl = `${BASE_URL}/assistant/metrics?metric_type=overview&from=${from}&to=${to}`;
     const overviewRes = await fetch(overviewApiUrl);
     if (!overviewRes.ok) throw new Error(`API Error: ${overviewRes.status}`);
     const overviewData = await overviewRes.json();
     console.log("🚀 ~ loader ~ overviewData:", overviewData)
 
-    const engagementMetricsApiUrl = `https://a62250oqm4.execute-api.us-east-1.amazonaws.com/dev/assistant/metrics?metric_type=engagement&from=${from}&to=${to}`;
+    const engagementMetricsApiUrl = `${BASE_URL}/assistant/metrics?metric_type=engagement&from=${from}&to=${to}`;
     const engagementMetricsRes = await fetch(engagementMetricsApiUrl);
     if (!engagementMetricsRes.ok) throw new Error(`API Error: ${engagementMetricsRes.status}`);
     const engagementMetricsData = await engagementMetricsRes.json();
